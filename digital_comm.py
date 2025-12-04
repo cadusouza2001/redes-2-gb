@@ -152,6 +152,20 @@ class DigitalTransmissionSimulator:
         return bit_errors, min_len, recovered_text
 
     def run(self) -> dict[str, list[float]]:
+        # Configuração Inicial
+        print("\n" + "="*60)
+        print("   SIMULAÇÃO DE SISTEMA DE TRANSMISSÃO DIGITAL (BPSK/QPSK)")
+        print("="*60)
+        print(f"Texto original carregado ({len(self.text)} caracteres).")
+        print("Configurando parâmetros de simulação:")
+        print("  - Modulações: BPSK, QPSK")
+        print("  - Codificação: Manchester")
+        print(f"  - Range Eb/N0: {self.ebn0_range[0]} dB a {self.ebn0_range[-1]} dB")
+        
+        # PAUSA 1
+        input("\n>>> Pressione ENTER para iniciar a varredura de BER e gerar gráficos...")
+        
+        print("\nExecutando varredura de BER...")
         ber_results: dict[str, list[float]] = {name: [] for name in self.modems}
         for ebn0_db in self.ebn0_range:
             for modem_name in self.modems:
@@ -159,7 +173,7 @@ class DigitalTransmissionSimulator:
                 ber = errors / total if total else 0.0
                 ber_results[modem_name].append(ber)
                 print(
-                    f"Eb/N0: {ebn0_db} dB | Modulação: {modem_name} | Erros: {errors} | BER: {ber:.6f}"
+                    f"Eb/N0: {ebn0_db:3d} dB | Modulação: {modem_name} | Erros: {errors:4d} | BER: {ber:.6f}"
                 )
         return ber_results
 
@@ -168,7 +182,7 @@ class DigitalTransmissionSimulator:
         for modem_name, bers in ber_results.items():
             plt.semilogy(self.ebn0_range, bers, marker="o", linestyle="None", label=f"{modem_name} (sim)")
 
-        # Curvas teóricas (BER por bit para BPSK e QPSK com mapeamento Gray).
+        # Curvas teóricas
         ebn0_linear = 10 ** (self.ebn0_range / 10)
         theoretical_ber = 0.5 * erfc(np.sqrt(ebn0_linear))
         plt.semilogy(self.ebn0_range, theoretical_ber, label="BPSK/QPSK (teórico)")
@@ -190,32 +204,53 @@ if __name__ == "__main__":
         " modulacoes com codificacao Manchester."
     )
     
-    # 1. Range estendido para capturar o comportamento em alto ruído (-10 dB)
+    # 1. Range estendido (-10 dB a 16 dB)
     ebn0_values = np.arange(-10, 16, 2)
     
     simulator = DigitalTransmissionSimulator(long_text, ebn0_values, seed=42)
+    
+    # Executa a simulação principal e plota
     ber = simulator.run()
     simulator.plot(ber)
 
-    # 2. Cálculo da Eficiência Espectral
+    # PAUSA 2
+    input("\n>>> Pressione ENTER para analisar a Eficiência Espectral...")
+
+    # 2. Eficiência Espectral
     manchester_rate = 0.5 
     efficiencies = {
         "BPSK": 1 * manchester_rate,
         "QPSK": 2 * manchester_rate,
     }
-    print("\nEficiência espectral teórica (bits/s/Hz) com Manchester:")
+    print("\n" + "="*30)
+    print("ANÁLISE DE EFICIÊNCIA ESPECTRAL")
+    print("="*30)
+    print("(Considerando overhead da codificação Manchester)")
     for name, eff in efficiencies.items():
         print(f" - {name}: {eff:.2f} bits/s/Hz")
 
-    # 3. Demonstração Prática (Texto Completo)
-    # Mostramos 0 dB (ruído forte) e 10 dB (ruído fraco/nulo na prática)
+    # PAUSA 3
+    input("\n>>> Pressione ENTER para iniciar a Demonstração Prática (Recuperação de Texto)...")
+
+    # 3. Demonstração Prática
     demonstration_snrs = [0, 10] 
     
-    for snr in demonstration_snrs:
-        print(f"\n{'='*20} Demonstração com Eb/N0 = {snr} dB {'='*20}")
+    print("\n" + "="*60)
+    print("   DEMONSTRAÇÃO PRÁTICA: IMPACTO DO RUÍDO NO TEXTO")
+    print("="*60)
+
+    for i, snr in enumerate(demonstration_snrs):
+        if i > 0:
+             # PAUSA 4 (Entre os cenários de teste, opcional, para dar suspense)
+             input(f"\n>>> Pressione ENTER para testar o próximo cenário (Eb/N0 = {snr} dB)...")
+        
+        print(f"\n--- Cenário {i+1}: Eb/N0 = {snr} dB ---")
         for modem_name in simulator.modems:
             errors, total, recovered = simulator._transmit_once(modem_name, snr)
-            ber = errors / total
-            print(f"\n[{modem_name}] BER: {ber:.6f} (Erros: {errors}/{total})")
-            print(f"Texto Recuperado:\n{recovered}") # <--- CORREÇÃO: Removido o limite [:100]
+            ber_val = errors / total
+            print(f"\n[{modem_name}] BER: {ber_val:.6f} (Erros: {errors}/{total})")
+            print("Texto Recuperado:")
+            print(f"{recovered}")
             print("-" * 60)
+            
+    print("\nFim da execução.")
